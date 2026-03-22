@@ -4,7 +4,7 @@ const app = express();
 
 app.use(express.json());
 
-// ===== CONNECT DATABASE (SAFE)
+// ===== CONNECT DATABASE
 mongoose.connect(process.env.MONGO_URL || "", {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -18,23 +18,24 @@ const orderSchema = new mongoose.Schema({
   name: String,
   phone: String,
   product: String,
+  quantity: Number,
+  beneficiary: String,
   amount: Number,
   date: { type: Date, default: Date.now }
 });
 
 const Order = mongoose.model("Order", orderSchema);
 
-// ===== TEST ROUTE
+// ===== TEST
 app.get("/", (req, res) => {
   res.send("Backend is working ✅");
 });
 
-// ===== SAVE ORDER WITH PERMANENT COUNT
+// ===== SAVE ORDER
 app.post("/save-order", async (req, res) => {
   try {
-    const { name, phone, product, amount } = req.body;
+    const { name, phone, product, quantity, beneficiary, amount } = req.body;
 
-    // Count previous orders from DB
     const count = await Order.countDocuments({ phone });
 
     const orderNumber = `DC-${phone}-${count + 1}`;
@@ -44,22 +45,20 @@ app.post("/save-order", async (req, res) => {
       name,
       phone,
       product,
+      quantity,
+      beneficiary,
       amount
     });
 
     await newOrder.save();
 
     res.json({
-      message: "Order saved permanently ✅",
+      message: "Order saved successfully ✅",
       order: newOrder
     });
 
   } catch (err) {
-    console.log("SAVE ERROR:", err.message);
-
-    res.status(500).json({
-      error: err.message
-    });
+    res.status(500).json({ error: err.message });
   }
 });
 
