@@ -3,72 +3,50 @@ const app = express();
 
 app.use(express.json());
 
-// ===== SAFE DATABASE SETUP =====
-let mongoose;
-let Order;
+// ===== TEMP STORAGE (acts like database for now)
+let orders = [];
 
-try {
-  mongoose = require("mongoose");
-
-  mongoose.connect(process.env.MONGO_URL, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  });
-
-  const orderSchema = new mongoose.Schema({
-    name: String,
-    phone: String,
-    product: String,
-    amount: Number,
-    date: { type: Date, default: Date.now }
-  });
-
-  Order = mongoose.model("Order", orderSchema);
-
-  console.log("MongoDB setup done");
-
-} catch (err) {
-  console.log("MongoDB FAILED:", err.message);
-}
-
-// ===== TEST ROUTE =====
+// ===== TEST ROUTE
 app.get("/", (req, res) => {
   res.send("Backend is working ✅");
 });
 
-// ===== SAVE ORDER =====
-app.post("/save-order", async (req, res) => {
+// ===== SAVE ORDER WITH ORDER NUMBER
+app.post("/save-order", (req, res) => {
   try {
     const { name, phone, product, amount } = req.body;
 
-    // If DB works → save
-    if (Order) {
-      const newOrder = new Order({
-        name,
-        phone,
-        product,
-        amount
-      });
+    // Count how many times this number has ordered
+    const userOrders = orders.filter(o => o.phone === phone);
+    const orderCount = userOrders.length + 1;
 
-      await newOrder.save();
-    }
+    // Create Order Number
+    const orderNumber = `DC-${phone}-${orderCount}`;
 
-    // Always respond (VERY IMPORTANT)
+    const newOrder = {
+      orderNumber,
+      name,
+      phone,
+      product,
+      amount,
+      date: new Date()
+    };
+
+    orders.push(newOrder);
+
     res.json({
       message: "Order received ✅",
-      data: { name, phone, product, amount }
+      order: newOrder
     });
 
   } catch (err) {
-    console.log("SAVE ERROR:", err.message);
-
     res.status(500).json({
       error: err.message
     });
   }
 });
 
-// ===== START SERVER =====
+// ===== START SERVER
 const PORT = process.env.PORT || 8080;
 
 app.listen(PORT, "0.0.0.0", () => {
