@@ -21,9 +21,10 @@ app.post("/save-order", async (req, res) => {
     const newOrder = new Order(req.body);
     await newOrder.save();
     res.send("Order saved successfully ✅");
-  } .catch(err => console.log("MongoDB Error:", err));
-    res.status(500).send("Error saving order");
-  }
+  } .catch (err) {
+  console.log(err);
+  res.status(500).send(err.message);
+}
 });
 const PORT = process.env.PORT || 3000;
 
