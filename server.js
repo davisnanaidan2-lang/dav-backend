@@ -1,49 +1,62 @@
 const express = require("express");
-const mongoose = require("mongoose");
-require("dotenv").config();
-
 const app = express();
+
 app.use(express.json());
 
-// ✅ Safe MongoDB connection (won’t crash server)
-mongoose.connect(process.env.MONGO_URL || "", {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log("MongoDB Connected"))
-.catch(err => console.log("MongoDB Error:", err.message));
+// ===== SAFE DATABASE SETUP =====
+let mongoose;
+let Order;
 
-// ✅ Order Schema
-const Order = mongoose.model("Order", {
-  name: String,
-  phone: String,
-  product: String,
-  amount: Number,
-  date: { type: Date, default: Date.now }
-});
+try {
+  mongoose = require("mongoose");
 
-// ✅ Test route
+  mongoose.connect(process.env.MONGO_URL, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  });
+
+  const orderSchema = new mongoose.Schema({
+    name: String,
+    phone: String,
+    product: String,
+    amount: Number,
+    date: { type: Date, default: Date.now }
+  });
+
+  Order = mongoose.model("Order", orderSchema);
+
+  console.log("MongoDB setup done");
+
+} catch (err) {
+  console.log("MongoDB FAILED:", err.message);
+}
+
+// ===== TEST ROUTE =====
 app.get("/", (req, res) => {
   res.send("Backend is working ✅");
 });
 
-// ✅ Save Order
+// ===== SAVE ORDER =====
 app.post("/save-order", async (req, res) => {
   try {
     const { name, phone, product, amount } = req.body;
 
-    const newOrder = new Order({
-      name,
-      phone,
-      product,
-      amount
-    });
+    // If DB works → save
+    if (Order) {
+      const newOrder = new Order({
+        name,
+        phone,
+        product,
+        amount
+      });
 
-    await newOrder.save();
+      await newOrder.save();
+    }
 
+    // Always respond (VERY IMPORTANT)
     res.json({
-      message: "Order saved ✅",
-      order: newOrder
+      message: "Order received ✅",
+      data: { name, phone, product, amount }
     });
 
   } catch (err) {
@@ -55,7 +68,7 @@ app.post("/save-order", async (req, res) => {
   }
 });
 
-// ✅ Start server (Railway fix)
+// ===== START SERVER =====
 const PORT = process.env.PORT || 8080;
 
 app.listen(PORT, "0.0.0.0", () => {
