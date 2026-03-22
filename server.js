@@ -5,12 +5,17 @@ require("dotenv").config();
 const app = express();
 app.use(express.json());
 
-// ✅ Connect to MongoDB
-mongoose.connect(process.env.MONGO_URL)
+// 🔥 Safe MongoDB connection (WON’T CRASH SERVER)
+mongoose.connect(process.env.MONGO_URL || "mongodb://127.0.0.1:27017/test", {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
 .then(() => console.log("MongoDB Connected"))
-.catch(err => console.log(err));
+.catch(err => {
+  console.log("MongoDB FAILED:", err.message);
+});
 
-// ✅ Order Schema
+// Order Schema
 const Order = mongoose.model("Order", {
   name: String,
   phone: String,
@@ -19,12 +24,12 @@ const Order = mongoose.model("Order", {
   date: { type: Date, default: Date.now }
 });
 
-// ✅ Test route
+// Test route
 app.get("/", (req, res) => {
   res.send("Backend is running 🚀");
 });
 
-// ✅ Save Order Route
+// Save Order
 app.post("/save-order", async (req, res) => {
   try {
     const { name, phone, product, amount } = req.body;
@@ -44,12 +49,14 @@ app.post("/save-order", async (req, res) => {
     });
 
   } catch (err) {
-    console.log(err);
-    res.status(500).send(err.message);
+    console.log("SAVE ERROR:", err);
+    res.status(500).json({
+      error: err.message
+    });
   }
 });
 
-// ✅ Start Server
+// Start server
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log("Server running on port " + PORT);
