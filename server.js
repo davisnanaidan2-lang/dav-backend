@@ -14,7 +14,15 @@ mongoose.connect(process.env.MONGO_URL)
 app.get("/", (req, res) => {
   res.send("Backend is running 🚀");
 });
-
+app.post("/save-order", async (req, res) => {
+  try {
+    const newOrder = new Order(req.body);
+    await newOrder.save();
+    res.send("Order saved successfully ✅");
+  } catch (err) {
+    res.status(500).send("Error saving order");
+  }
+});
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
