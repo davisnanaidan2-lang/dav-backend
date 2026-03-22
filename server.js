@@ -1,45 +1,62 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const app = express();
 
 app.use(express.json());
 
-// ===== TEMP STORAGE (acts like database for now)
-let orders = [];
+// ===== CONNECT DATABASE (SAFE)
+mongoose.connect(process.env.MONGO_URL || "", {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => console.log("MongoDB Connected"))
+.catch(err => console.log("MongoDB Error:", err.message));
+
+// ===== SCHEMA
+const orderSchema = new mongoose.Schema({
+  orderNumber: String,
+  name: String,
+  phone: String,
+  product: String,
+  amount: Number,
+  date: { type: Date, default: Date.now }
+});
+
+const Order = mongoose.model("Order", orderSchema);
 
 // ===== TEST ROUTE
 app.get("/", (req, res) => {
   res.send("Backend is working ✅");
 });
 
-// ===== SAVE ORDER WITH ORDER NUMBER
-app.post("/save-order", (req, res) => {
+// ===== SAVE ORDER WITH PERMANENT COUNT
+app.post("/save-order", async (req, res) => {
   try {
     const { name, phone, product, amount } = req.body;
 
-    // Count how many times this number has ordered
-    const userOrders = orders.filter(o => o.phone === phone);
-    const orderCount = userOrders.length + 1;
+    // Count previous orders from DB
+    const count = await Order.countDocuments({ phone });
 
-    // Create Order Number
-    const orderNumber = `DC-${phone}-${orderCount}`;
+    const orderNumber = `DC-${phone}-${count + 1}`;
 
-    const newOrder = {
+    const newOrder = new Order({
       orderNumber,
       name,
       phone,
       product,
-      amount,
-      date: new Date()
-    };
+      amount
+    });
 
-    orders.push(newOrder);
+    await newOrder.save();
 
     res.json({
-      message: "Order received ✅",
+      message: "Order saved permanently ✅",
       order: newOrder
     });
 
   } catch (err) {
+    console.log("SAVE ERROR:", err.message);
+
     res.status(500).json({
       error: err.message
     });
