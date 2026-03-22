@@ -9,12 +9,16 @@ app.use(bodyParser.json());
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Order counter (simple memory system)
 let orderCount = 0;
 
 app.post("/save-order", async (req, res) => {
   try {
     const { name, phone, product, quantity, beneficiary, amount } = req.body;
+
+    // ✅ Validate input
+    if (!phone || !product || !amount) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
 
     orderCount++;
 
@@ -31,10 +35,12 @@ app.post("/save-order", async (req, res) => {
       date: new Date()
     };
 
-    // 📧 SEND EMAIL
-    await resend.emails.send({
+    console.log("ORDER RECEIVED:", order);
+
+    // ✅ SEND EMAIL
+    const response = await resend.emails.send({
       from: "Dav Bundles <onboarding@resend.dev>",
-      to: [davisnanaidan2@gmail.com"], // 🔥 CHANGE THIS
+      to: ["davisnanaidan2@gmail.com"], // 🔥 CHANGE THIS
       subject: "New Order Received",
       html: `
         <h2>New Order</h2>
@@ -47,12 +53,20 @@ app.post("/save-order", async (req, res) => {
       `
     });
 
+    console.log("EMAIL SENT:", response);
+
     res.json({ order });
 
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Error saving order" });
+  } catch (error) {
+    console.error("EMAIL ERROR:", error);
+    res.status(500).json({ error: "Failed to send email" });
   }
 });
 
-app.listen(3000, () => console.log("Server running..."));
+app.get("/", (req, res) => {
+  res.send("Backend is running ✅");
+});
+
+app.listen(3000, () => {
+  console.log("Server running on port 3000");
+});
