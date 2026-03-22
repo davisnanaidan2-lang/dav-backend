@@ -1,10 +1,12 @@
 const express = require("express");
 const mongoose = require("mongoose");
+const cors = require("cors");
 const Order = require("./models/Order");
+
 const app = express();
 
+app.use(cors());
 app.use(express.json());
-
 // CONNECT TO MONGODB
 mongoose.connect(process.env.MONGO_URL)
 .then(() => console.log("MongoDB connected"))
