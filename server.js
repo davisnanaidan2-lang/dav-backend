@@ -1,70 +1,58 @@
 const express = require("express");
-const mongoose = require("mongoose");
+const cors = require("cors");
+const bodyParser = require("body-parser");
+const { Resend } = require("resend");
+
 const app = express();
+app.use(cors());
+app.use(bodyParser.json());
 
-app.use(express.json());
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// ===== CONNECT DATABASE
-mongoose.connect(process.env.MONGO_URL || "", {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log("MongoDB Connected"))
-.catch(err => console.log("MongoDB Error:", err.message));
+// Order counter (simple memory system)
+let orderCount = 0;
 
-// ===== SCHEMA
-const orderSchema = new mongoose.Schema({
-  orderNumber: String,
-  name: String,
-  phone: String,
-  product: String,
-  quantity: Number,
-  beneficiary: String,
-  amount: Number,
-  date: { type: Date, default: Date.now }
-});
-
-const Order = mongoose.model("Order", orderSchema);
-
-// ===== TEST
-app.get("/", (req, res) => {
-  res.send("Backend is working ✅");
-});
-
-// ===== SAVE ORDER
 app.post("/save-order", async (req, res) => {
   try {
     const { name, phone, product, quantity, beneficiary, amount } = req.body;
 
-    const count = await Order.countDocuments({ phone });
+    orderCount++;
 
-    const orderNumber = `DC-${phone}-${count + 1}`;
+    const orderNumber = `DC-${phone}-${orderCount}`;
 
-    const newOrder = new Order({
+    const order = {
       orderNumber,
       name,
       phone,
       product,
       quantity,
       beneficiary,
-      amount
+      amount,
+      date: new Date()
+    };
+
+    // 📧 SEND EMAIL
+    await resend.emails.send({
+      from: "Dav Bundles <onboarding@resend.dev>",
+      to: [davisnanaidan2@gmail.com"], // 🔥 CHANGE THIS
+      subject: "New Order Received",
+      html: `
+        <h2>New Order</h2>
+        <p><b>Order No:</b> ${orderNumber}</p>
+        <p><b>Product:</b> ${product}</p>
+        <p><b>Quantity:</b> ${quantity}</p>
+        <p><b>Beneficiary:</b> ${beneficiary}</p>
+        <p><b>Customer:</b> ${phone}</p>
+        <p><b>Amount:</b> GHS ${amount}</p>
+      `
     });
 
-    await newOrder.save();
-
-    res.json({
-      message: "Order saved successfully ✅",
-      order: newOrder
-    });
+    res.json({ order });
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: "Error saving order" });
   }
 });
 
-// ===== START SERVER
-const PORT = process.env.PORT || 8080;
-
-app.listen(PORT, "0.0.0.0", () => {
-  console.log("Server running on port " + PORT);
-});
+app.listen(3000, () => console.log("Server running..."));
