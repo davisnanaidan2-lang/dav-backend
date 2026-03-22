@@ -4,29 +4,30 @@ const bodyParser = require("body-parser");
 const { Resend } = require("resend");
 
 const app = express();
-
-// ✅ VERY IMPORTANT FOR RAILWAY
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(bodyParser.json());
 
-// ✅ Check API key exists
-if (!process.env.RESEND_API_KEY) {
-  console.log("❌ RESEND API KEY MISSING");
-}
-
+// ✅ Initialize Resend
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// Order counter
 let orderCount = 0;
 
+// Test route
 app.get("/", (req, res) => {
   res.send("Backend is running ✅");
 });
 
+// Save order + send email
 app.post("/save-order", async (req, res) => {
   try {
     const { name, phone, product, quantity, beneficiary, amount } = req.body;
+
+    if (!phone || !product || !amount) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
 
     orderCount++;
 
@@ -43,35 +44,39 @@ app.post("/save-order", async (req, res) => {
       date: new Date()
     };
 
-    console.log("ORDER:", order);
+    console.log("ORDER RECEIVED:", order);
 
-    // ✅ SEND EMAIL
+    // ✅ SEND EMAIL (FIXED)
     await resend.emails.send({
-      from: "Dav Bundles <onboarding@resend.dev>",
-      to: ["yourrealemail@gmail.com"], // CHANGE THIS
-      subject: "New Order",
+      from: "onboarding@resend.dev",
+      to: ["davisnanaidan2@gmail.com"], // 🔥 CHANGE THIS ONLY
+      subject: "New Order Received",
       html: `
-        <h2>Order Received</h2>
-        <p><b>Order No:</b> ${orderNumber}</p>
+        <h2>Dav's Cheap Bundles Order</h2>
+        <p><b>Order Number:</b> ${orderNumber}</p>
         <p><b>Product:</b> ${product}</p>
         <p><b>Quantity:</b> ${quantity}</p>
         <p><b>Beneficiary:</b> ${beneficiary}</p>
-        <p><b>Phone:</b> ${phone}</p>
+        <p><b>Customer Phone:</b> ${phone}</p>
         <p><b>Amount:</b> GHS ${amount}</p>
+        <p><b>Date:</b> ${new Date().toLocaleString()}</p>
       `
     });
 
+    console.log("EMAIL SENT SUCCESSFULLY");
+
     res.json({
-      message: "Order + Email sent ✅",
+      message: "Order saved + email sent ✅",
       order
     });
 
-  } catch (err) {
-    console.error("ERROR:", err);
-    res.status(500).json({ error: "Server error" });
+  } catch (error) {
+    console.error("ERROR:", error);
+    res.status(500).json({ error: "Email failed" });
   }
 });
 
+// Start server
 app.listen(PORT, () => {
   console.log("Server running on port " + PORT);
 });
