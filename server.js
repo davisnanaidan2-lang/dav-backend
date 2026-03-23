@@ -1,70 +1,82 @@
 import express from "express";
 import cors from "cors";
-import fetch from "node-fetch";
+import nodemailer from "nodemailer";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
+/* EMAIL SETUP */
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+/* TEST ROUTE */
+app.get("/", (req, res) => {
+  res.send("Backend working");
+});
+
+/* ORDER ROUTE */
 app.post("/order", async (req, res) => {
+  try {
+    const {
+      phone,
+      product,
+      network,
+      quantity,
+      beneficiary,
+      amount,
+      orderNumber,
+    } = req.body;
 
-try {
+    if (!phone || !product || !amount) {
+      return res.status(400).json({ error: "Missing fields" });
+    }
 
-const {
-phone,
-product,
-network,
-quantity,
-beneficiary,
-amount
-} = req.body;
+    const message = `
+NEW ORDER RECEIVED
 
-/* FIXED VALUES */
-const ben = beneficiary && beneficiary.trim() !== "" ? beneficiary : "Not Provided";
-const qty = quantity && quantity > 0 ? quantity : 1;
-
-const orderId = "DC-" + phone + "-" + Math.floor(Math.random()*1000);
-
-const emailHTML = `
-<h2>Dav's Cheap Bundles</h2>
-
-<p><b>Order Number:</b> ${orderId}</p>
-<p><b>Product:</b> ${product}</p>
-<p><b>Network:</b> ${network}</p>
-<p><b>Quantity:</b> ${qty}</p>
-<p><b>Beneficiary:</b> ${ben}</p>
-<p><b>Phone:</b> ${phone}</p>
-<p><b>Amount:</b> GHS ${amount}</p>
-<p><b>Date:</b> ${new Date().toLocaleString()}</p>
+Order Number: ${orderNumber}
+Product: ${product}
+Network: ${network}
+Quantity: ${quantity}
+Beneficiary: ${beneficiary}
+Amount: GH₵ ${amount}
+Customer Phone: ${phone}
+Date: ${new Date().toLocaleString()}
 `;
 
-const response = await fetch("https://api.resend.com/emails", {
-method: "POST",
-headers: {
-"Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
-"Content-Type": "application/json"
-},
-body: JSON.stringify({
-from: "Dav Bundles <onboarding@resend.dev>",
-to: ["davisnanaidan2@gmail.com"], // 🔥 PUT YOUR REAL EMAIL HERE
-subject: "New Order Received",
-html: emailHTML
-})
+    await transporter.sendMail({
+      from: `"Dav's Cheap Bundles" <${process.env.EMAIL_USER}>`,
+      to: process.env.EMAIL_USER,
+      subject: "New Order Received",
+      text: message,
+    });
+
+    console.log("EMAIL SENT SUCCESSFULLY");
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.log("EMAIL ERROR:", error);
+
+    res.status(500).json({
+      error: "Email failed",
+      details: error.message,
+    });
+  }
 });
 
-const data = await response.json();
+/* START SERVER */
+const PORT = process.env.PORT || 3000;
 
-res.json({
-message: "Email sent",
-data
-});
-
-} catch (err) {
-res.status(500).json({error: err.message});
-}
-
-});
-
-app.listen(3000, () => {
-console.log("Server running");
+app.listen(PORT, () => {
+  console.log("Server running on port", PORT);
 });
