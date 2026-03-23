@@ -1,9 +1,7 @@
-import express from "express";
-import cors from "cors";
-import nodemailer from "nodemailer";
-import dotenv from "dotenv";
-
-dotenv.config();
+const express = require("express");
+const cors = require("cors");
+const nodemailer = require("nodemailer");
+require("dotenv").config();
 
 const app = express();
 
@@ -19,7 +17,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-/* VERIFY EMAIL CONFIG */
+/* VERIFY EMAIL */
 transporter.verify(function (error, success) {
   if (error) {
     console.log("EMAIL CONFIG ERROR:", error);
@@ -73,13 +71,13 @@ Date: ${new Date().toLocaleString()}
 
     res.status(200).json({ success: true });
 
-  } catch (error) {
+  } catch (err) {
 
-    console.log("EMAIL ERROR:", error);
+    console.log("EMAIL ERROR:", err);
 
     res.status(500).json({
       error: "Email failed",
-      details: error.message
+      details: err.message
     });
   }
 });
