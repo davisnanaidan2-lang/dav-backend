@@ -9,9 +9,6 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
-// 🔥 DEBUG: check API key
-console.log("API KEY:", process.env.RESEND_API_KEY);
-
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 let orderCount = 0;
@@ -28,24 +25,34 @@ app.post("/save-order", async (req, res) => {
 
     const orderNumber = `DC-${phone}-${orderCount}`;
 
-    console.log("Trying to send email...");
+    console.log("Sending email...");
 
-    const emailResponse = await resend.emails.send({
+    const response = await resend.emails.send({
       from: "onboarding@resend.dev",
-      to: ["davisnanaidan@gmail.com"], // CHANGE THIS
-      subject: "Test Order",
-      html: `<p>Order ${orderNumber}</p>`
+
+      // 🔥 VERY IMPORTANT (MUST BE YOUR RESEND ACCOUNT EMAIL)
+      to: ["davisnanaidan2@gmail.com"],
+
+      subject: "New Order Received",
+      html: `
+        <h2>Dav's Cheap Bundles</h2>
+        <p><b>Order Number:</b> ${orderNumber}</p>
+        <p><b>Product:</b> ${product}</p>
+        <p><b>Quantity:</b> ${quantity}</p>
+        <p><b>Phone:</b> ${phone}</p>
+        <p><b>Amount:</b> GHS ${amount}</p>
+      `
     });
 
-    console.log("EMAIL RESPONSE:", emailResponse);
+    console.log("EMAIL RESPONSE:", response);
 
     res.json({
-      message: "Email attempted",
-      emailResponse
+      message: "Email sent ✅",
+      response
     });
 
   } catch (error) {
-    console.error("FULL ERROR:", error);
+    console.error("ERROR:", error);
 
     res.status(500).json({
       error: "Email failed",
