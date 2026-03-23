@@ -1,9 +1,6 @@
-import express from "express";
-import cors from "cors";
-import nodemailer from "nodemailer";
-import dotenv from "dotenv";
-
-dotenv.config();
+const express = require("express");
+const cors = require("cors");
+const nodemailer = require("nodemailer");
 
 const app = express();
 
@@ -37,10 +34,6 @@ app.post("/order", async (req, res) => {
       orderNumber,
     } = req.body;
 
-    if (!phone || !product || !amount) {
-      return res.status(400).json({ error: "Missing fields" });
-    }
-
     const message = `
 NEW ORDER RECEIVED
 
@@ -55,22 +48,17 @@ Date: ${new Date().toLocaleString()}
 `;
 
     await transporter.sendMail({
-      from: `"Dav's Cheap Bundles" <${process.env.EMAIL_USER}>`,
+      from: process.env.EMAIL_USER,
       to: process.env.EMAIL_USER,
-      subject: "New Order Received",
+      subject: "New Order",
       text: message,
     });
 
-    console.log("EMAIL SENT SUCCESSFULLY");
+    res.json({ success: true });
 
-    res.status(200).json({ success: true });
-  } catch (error) {
-    console.log("EMAIL ERROR:", error);
-
-    res.status(500).json({
-      error: "Email failed",
-      details: error.message,
-    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Email failed" });
   }
 });
 
@@ -78,5 +66,5 @@ Date: ${new Date().toLocaleString()}
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("Server running on port", PORT);
+  console.log("Server running");
 });
