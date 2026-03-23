@@ -1,93 +1,70 @@
-const express = require("express");
-const cors = require("cors");
-const bodyParser = require("body-parser");
-const { Resend } = require("resend");
+import express from "express";
+import cors from "cors";
+import fetch from "node-fetch";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+app.post("/order", async (req, res) => {
 
-// Store customer order counts
-const customerOrders = {};
+try {
 
-app.get("/", (req, res) => {
-  res.send("Backend is running ✅");
+const {
+phone,
+product,
+network,
+quantity,
+beneficiary,
+amount
+} = req.body;
+
+/* FIXED VALUES */
+const ben = beneficiary && beneficiary.trim() !== "" ? beneficiary : "Not Provided";
+const qty = quantity && quantity > 0 ? quantity : 1;
+
+const orderId = "DC-" + phone + "-" + Math.floor(Math.random()*1000);
+
+const emailHTML = `
+<h2>Dav's Cheap Bundles</h2>
+
+<p><b>Order Number:</b> ${orderId}</p>
+<p><b>Product:</b> ${product}</p>
+<p><b>Network:</b> ${network}</p>
+<p><b>Quantity:</b> ${qty}</p>
+<p><b>Beneficiary:</b> ${ben}</p>
+<p><b>Phone:</b> ${phone}</p>
+<p><b>Amount:</b> GHS ${amount}</p>
+<p><b>Date:</b> ${new Date().toLocaleString()}</p>
+`;
+
+const response = await fetch("https://api.resend.com/emails", {
+method: "POST",
+headers: {
+"Authorization": `Bearer ${process.env.RESEND_API_KEY}`,
+"Content-Type": "application/json"
+},
+body: JSON.stringify({
+from: "Dav Bundles <onboarding@resend.dev>",
+to: ["davisnanaidan2@gmail.com"], // 🔥 PUT YOUR REAL EMAIL HERE
+subject: "New Order Received",
+html: emailHTML
+})
 });
 
-app.post("/save-order", async (req, res) => {
-  try {
-    const { name, phone, product, quantity, beneficiary, amount } = req.body;
+const data = await response.json();
 
-    if (!phone || !product || !amount) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    // Track how many times this customer has ordered
-    if (!customerOrders[phone]) {
-      customerOrders[phone] = 0;
-    }
-
-    customerOrders[phone]++;
-
-    const orderNumber = `DC-${phone}-${customerOrders[phone]}`;
-
-    const orderDate = new Date().toLocaleString();
-
-    // Send Email
-    await resend.emails.send({
-      from: "onboarding@resend.dev",
-      to: ["davisnanaidan2@gmail.com"], // 🔥 PUT YOUR REAL EMAIL
-      subject: "🛒 New Order Received",
-      html: `
-        <div style="font-family: Arial; padding: 20px;">
-          <h2 style="color: #0a66c2;">Dav's Cheap Bundles</h2>
-
-          <p>Your order has been received and is being processed.</p>
-
-          <hr/>
-
-          <p><b>ORDER NUMBER:</b> ${orderNumber}</p>
-          <p><b>ORDER DATE:</b> ${orderDate}</p>
-          <p><b>PRODUCT:</b> ${product}</p>
-          <p><b>QUANTITY:</b> ${quantity || 1}</p>
-          <p><b>BENEFICIARY NUMBER:</b> ${beneficiary || phone}</p>
-          <p><b>CUSTOMER NUMBER:</b> ${phone}</p>
-          <p><b>AMOUNT:</b> GHS ${amount}</p>
-
-          <hr/>
-
-          <p style="color: green;"><b>Status:</b> Processing</p>
-
-          <p>Thank you for choosing Dav's Cheap Bundles 💙</p>
-        </div>
-      `
-    });
-
-    res.json({
-      message: "Order saved + email sent ✅",
-      order: {
-        orderNumber,
-        orderDate,
-        product,
-        quantity: quantity || 1,
-        phone,
-        amount
-      }
-    });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      error: "Server error",
-      details: error.message
-    });
-  }
+res.json({
+message: "Email sent",
+data
 });
 
-app.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
+} catch (err) {
+res.status(500).json({error: err.message});
+}
+
+});
+
+app.listen(3000, () => {
+console.log("Server running");
 });
