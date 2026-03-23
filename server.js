@@ -1,6 +1,9 @@
-const express = require("express");
-const cors = require("cors");
-const nodemailer = require("nodemailer");
+import express from "express";
+import cors from "cors";
+import nodemailer from "nodemailer";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
 
@@ -16,6 +19,15 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+/* VERIFY EMAIL CONFIG */
+transporter.verify(function (error, success) {
+  if (error) {
+    console.log("EMAIL CONFIG ERROR:", error);
+  } else {
+    console.log("EMAIL SERVER READY");
+  }
+});
+
 /* TEST ROUTE */
 app.get("/", (req, res) => {
   res.send("Backend working");
@@ -24,6 +36,9 @@ app.get("/", (req, res) => {
 /* ORDER ROUTE */
 app.post("/order", async (req, res) => {
   try {
+
+    console.log("ORDER RECEIVED:", req.body);
+
     const {
       phone,
       product,
@@ -31,7 +46,7 @@ app.post("/order", async (req, res) => {
       quantity,
       beneficiary,
       amount,
-      orderNumber,
+      orderNumber
     } = req.body;
 
     const message = `
@@ -48,17 +63,24 @@ Date: ${new Date().toLocaleString()}
 `;
 
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: `"Dav's Cheap Bundles" <${process.env.EMAIL_USER}>`,
       to: process.env.EMAIL_USER,
-      subject: "New Order",
+      subject: "New Order Received",
       text: message,
     });
 
-    res.json({ success: true });
+    console.log("EMAIL SENT SUCCESSFULLY");
 
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ error: "Email failed" });
+    res.status(200).json({ success: true });
+
+  } catch (error) {
+
+    console.log("EMAIL ERROR:", error);
+
+    res.status(500).json({
+      error: "Email failed",
+      details: error.message
+    });
   }
 });
 
@@ -66,5 +88,5 @@ Date: ${new Date().toLocaleString()}
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("Server running");
+  console.log("Server running on port", PORT);
 });
