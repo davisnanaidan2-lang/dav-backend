@@ -9,74 +9,51 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
-// ✅ Initialize Resend
+// 🔥 DEBUG: check API key
+console.log("API KEY:", process.env.RESEND_API_KEY);
+
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Order counter
 let orderCount = 0;
 
-// Test route
 app.get("/", (req, res) => {
   res.send("Backend is running ✅");
 });
 
-// Save order + send email
 app.post("/save-order", async (req, res) => {
   try {
     const { name, phone, product, quantity, beneficiary, amount } = req.body;
-
-    if (!phone || !product || !amount) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
 
     orderCount++;
 
     const orderNumber = `DC-${phone}-${orderCount}`;
 
-    const order = {
-      orderNumber,
-      name,
-      phone,
-      product,
-      quantity,
-      beneficiary,
-      amount,
-      date: new Date()
-    };
+    console.log("Trying to send email...");
 
-    console.log("ORDER RECEIVED:", order);
-
-    // ✅ SEND EMAIL (FIXED)
-    await resend.emails.send({
+    const emailResponse = await resend.emails.send({
       from: "onboarding@resend.dev",
-      to: ["davisnanaidan2@gmail.com"], // 🔥 CHANGE THIS ONLY
-      subject: "New Order Received",
-      html: `
-        <h2>Dav's Cheap Bundles Order</h2>
-        <p><b>Order Number:</b> ${orderNumber}</p>
-        <p><b>Product:</b> ${product}</p>
-        <p><b>Quantity:</b> ${quantity}</p>
-        <p><b>Beneficiary:</b> ${beneficiary}</p>
-        <p><b>Customer Phone:</b> ${phone}</p>
-        <p><b>Amount:</b> GHS ${amount}</p>
-        <p><b>Date:</b> ${new Date().toLocaleString()}</p>
-      `
+      to: ["davisnanaidan@gmail.com"], // CHANGE THIS
+      subject: "Test Order",
+      html: `<p>Order ${orderNumber}</p>`
     });
 
-    console.log("EMAIL SENT SUCCESSFULLY");
+    console.log("EMAIL RESPONSE:", emailResponse);
 
     res.json({
-      message: "Order saved + email sent ✅",
-      order
+      message: "Email attempted",
+      emailResponse
     });
 
   } catch (error) {
-    console.error("ERROR:", error);
-    res.status(500).json({ error: "Email failed" });
+    console.error("FULL ERROR:", error);
+
+    res.status(500).json({
+      error: "Email failed",
+      details: error.message
+    });
   }
 });
 
-// Start server
 app.listen(PORT, () => {
   console.log("Server running on port " + PORT);
 });
