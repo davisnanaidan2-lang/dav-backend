@@ -11,7 +11,8 @@ app.use(bodyParser.json());
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-let orderCount = 0;
+// Store customer order counts
+const customerOrders = {};
 
 app.get("/", (req, res) => {
   res.send("Backend is running ✅");
@@ -21,41 +22,67 @@ app.post("/save-order", async (req, res) => {
   try {
     const { name, phone, product, quantity, beneficiary, amount } = req.body;
 
-    orderCount++;
+    if (!phone || !product || !amount) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
 
-    const orderNumber = `DC-${phone}-${orderCount}`;
+    // Track how many times this customer has ordered
+    if (!customerOrders[phone]) {
+      customerOrders[phone] = 0;
+    }
 
-    console.log("Sending email...");
+    customerOrders[phone]++;
 
-    const response = await resend.emails.send({
+    const orderNumber = `DC-${phone}-${customerOrders[phone]}`;
+
+    const orderDate = new Date().toLocaleString();
+
+    // Send Email
+    await resend.emails.send({
       from: "onboarding@resend.dev",
-
-      // 🔥 VERY IMPORTANT (MUST BE YOUR RESEND ACCOUNT EMAIL)
-      to: ["davisnanaidan2@gmail.com"],
-
-      subject: "New Order Received",
+      to: ["davisnanaidan2@gmail.com"], // 🔥 PUT YOUR REAL EMAIL
+      subject: "🛒 New Order Received",
       html: `
-        <h2>Dav's Cheap Bundles</h2>
-        <p><b>Order Number:</b> ${orderNumber}</p>
-        <p><b>Product:</b> ${product}</p>
-        <p><b>Quantity:</b> ${quantity}</p>
-        <p><b>Phone:</b> ${phone}</p>
-        <p><b>Amount:</b> GHS ${amount}</p>
+        <div style="font-family: Arial; padding: 20px;">
+          <h2 style="color: #0a66c2;">Dav's Cheap Bundles</h2>
+
+          <p>Your order has been received and is being processed.</p>
+
+          <hr/>
+
+          <p><b>ORDER NUMBER:</b> ${orderNumber}</p>
+          <p><b>ORDER DATE:</b> ${orderDate}</p>
+          <p><b>PRODUCT:</b> ${product}</p>
+          <p><b>QUANTITY:</b> ${quantity || 1}</p>
+          <p><b>BENEFICIARY NUMBER:</b> ${beneficiary || phone}</p>
+          <p><b>CUSTOMER NUMBER:</b> ${phone}</p>
+          <p><b>AMOUNT:</b> GHS ${amount}</p>
+
+          <hr/>
+
+          <p style="color: green;"><b>Status:</b> Processing</p>
+
+          <p>Thank you for choosing Dav's Cheap Bundles 💙</p>
+        </div>
       `
     });
 
-    console.log("EMAIL RESPONSE:", response);
-
     res.json({
-      message: "Email sent ✅",
-      response
+      message: "Order saved + email sent ✅",
+      order: {
+        orderNumber,
+        orderDate,
+        product,
+        quantity: quantity || 1,
+        phone,
+        amount
+      }
     });
 
   } catch (error) {
-    console.error("ERROR:", error);
-
+    console.error(error);
     res.status(500).json({
-      error: "Email failed",
+      error: "Server error",
       details: error.message
     });
   }
